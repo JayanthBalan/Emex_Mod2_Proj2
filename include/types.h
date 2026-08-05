@@ -1,8 +1,10 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <stdint.h>
+
 /* User defined types */
-typedef unsigned int uint;
+typedef uint32_t uint;
 
 /* Status will be used in fn. return type */
 typedef enum

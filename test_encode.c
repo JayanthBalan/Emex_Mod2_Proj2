@@ -2,43 +2,42 @@
 #include "encode.h"
 #include "types.h"
 
+uint8_t encodeOperation(char *argv[]);
+
 int main(int argc, char *argv[])
 {
     OperationType op_type = check_operation_type(argv);
     if(op_type == e_encode) {
-        printf("Info: Operation type is Encode\n");
+        fprintf(stdout, "test_encode: Operation type is Encode\n");
+        return encodeOperation(argv);
     }
     else if(op_type == e_decode) {
-        printf("Info: Operation type is Decode\n");
+        fprintf(stdout, "test_encode: Operation type is Decode\n");
     }
     else {
-        printf("Info: Operation type is Unsupported\nInvalid Command Line Argument\n");
-        printf("Encode Command Syntax: ./a.out -e beautiful.bmp secret.txt [stego_img.bmp]\n");
-        printf("Decode Command Syntax: ./a.out -d stego_img.bmp [output_secret_file]\n");
+        fprintf(stderr, "test_encode: Operation type is Unsupported\nInvalid Command Line Argument\n");
+        fprintf(stderr, "test_encode: Encode Command Syntax: ./a.out -e beautiful.bmp secret [stego_img.bmp]\n");
+        fprintf(stderr, "test_encode: Decode Command Syntax: ./a.out -d stego_img.bmp [output_secret_file]\n");
     }
 
+    return 0;
+}
+
+uint8_t encodeOperation(char *argv[]) {
     EncodeInfo encInfo;
-    uint img_size;
-
-    // Fill with sample filenames
-    encInfo.src_image_fname = "beautiful.bmp";
-    encInfo.secret_fname = "secret.txt";
-    encInfo.stego_image_fname = "stego_img.bmp";
-
-    // Test open_files
-    if (open_files(&encInfo) == e_failure)
-    {
-    	printf("ERROR: %s function failed\n", "open_files" );
-    	return 1;
+    Status stat = read_and_validate_encode_args(argv, &encInfo);
+    if(stat == e_failure) {
+        fprintf(stderr, "test_encode: Encode arguments invalid\n");
+        return -1;
     }
-    else
-    {
-    	printf("SUCCESS: %s function completed\n", "open_files" );
-    }
+    fprintf(stdout, "test_encode: Encode arguments valid\n");
 
-    // Test get_image_size_for_bmp
-    img_size = get_image_size_for_bmp(encInfo.fptr_src_image);
-    printf("INFO: Image size = %u\n", img_size);
+    Status do_enc_stat = do_encoding(&encInfo);
+    if(do_enc_stat == e_failure) {
+        fprintf(stderr, "test_encode: Encoding failed\n");
+        return -1;
+    }
+    fprintf(stdout, "test_encode: Encoding successful\n");
 
     return 0;
 }
