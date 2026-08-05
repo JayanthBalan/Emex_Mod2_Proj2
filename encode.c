@@ -2,6 +2,7 @@
 #include "encode.h"
 
 static uint8_t filename_bmp_validate(char *filename);
+static void cleanup_fp(EncodeInfo *encInfo);
 
 typedef enum _encode_field_sizes {
     e_magic_string_field = 2,
@@ -140,8 +141,14 @@ Status read_and_validate_encode_args(char *argv[], EncodeInfo *encInfo) {
         return e_failure;
     }
     uint extn_len = 0;
-    for(; *letter != '\0'; letter++, extn_len++);
+    for(; *letter != '\0'; letter++, extn_len++) {
+        encInfo->extn_secret_file[extn_len] = *letter;
+    }
+    encInfo->extn_secret_file[extn_len] = '\0';
     encInfo->size_secret_file_extn = extn_len;
+    if(extn_len > MAX_FILE_SUFFIX) {
+        return e_failure;
+    }
 
     // Destination Image
     if(argv[4] == NULL) {
@@ -156,6 +163,22 @@ Status read_and_validate_encode_args(char *argv[], EncodeInfo *encInfo) {
     return e_success;
 }
 
+static void cleanup_fp(EncodeInfo *encInfo) {
+    if(encInfo->fptr_src_image != NULL) {
+        fclose(encInfo->fptr_src_image);
+        encInfo->fptr_src_image = NULL;
+    }
+    if(encInfo->fptr_secret != NULL) {
+        fclose(encInfo->fptr_secret);
+        encInfo->fptr_secret = NULL;
+    }
+    if(encInfo->fptr_stego_image != NULL) {
+        fclose(encInfo->fptr_stego_image);
+        encInfo->fptr_stego_image = NULL;
+    }
+    fprintf(stdout, "%s: File pointers closed; Resource Leak Averted\n", __FILE__);
+}
+
 Status do_encoding(EncodeInfo *encInfo) {
     if(open_files(encInfo) == e_failure) {
         fprintf(stderr, "%s: File open failed\n", __FILE__);
@@ -165,24 +188,133 @@ Status do_encoding(EncodeInfo *encInfo) {
     
     if(check_capacity(encInfo) == e_failure) {
         fprintf(stderr, "%s: File not suitable for encoding.\n", __FILE__);
+        cleanup_fp(encInfo);
         return e_failure;
     }
     fprintf(stdout, "%s: File suitable for encoding.\n", __FILE__);
 
     if(copy_bmp_header(encInfo->fptr_src_image, encInfo->fptr_stego_image) == e_failure) {
         fprintf(stderr, "%s: Failed to copy bmp header.\n", __FILE__);
+        cleanup_fp(encInfo);
         return e_failure;
     }
     fprintf(stdout, "%s: BMP header duplication successful.\n", __FILE__);
 
     if(encode_magic_string(MAGIC_STRING, encInfo) == e_failure) {
         fprintf(stderr, "%s: Failed to encode magic string.\n", __FILE__);
+        cleanup_fp(encInfo);
         return e_failure;
     }
     fprintf(stdout, "%s: Magic string encoding successful.\n", __FILE__);
 
+    if(encode_secret_file_extn_size(encInfo->size_secret_file_extn, encInfo) == e_failure) {
+        fprintf(stderr, "%s: Failed to encode file extension size.\n", __FILE__);
+        cleanup_fp(encInfo);
+        return e_failure;
+    }
+    fprintf(stdout, "%s: File extension size encoding successful.\n", __FILE__);
 
+    if(encode_secret_file_extn(encInfo->extn_secret_file, encInfo) == e_failure) {
+        fprintf(stderr, "%s: Failed to encode file extension.\n", __FILE__);
+        cleanup_fp(encInfo);
+        return e_failure;
+    }
+    fprintf(stdout, "%s: File extension encoding successful.\n", __FILE__);
 
+    if(encode_secret_file_size(encInfo->size_secret_file, encInfo) == e_failure) {
+        fprintf(stderr, "%s: Failed to encode file size.\n", __FILE__);
+        cleanup_fp(encInfo);
+        return e_failure;
+    }
+    fprintf(stdout, "%s: File size encoding successful.\n", __FILE__);
+
+    if(encode_secret_file_data(encInfo) == e_failure) {
+        fprintf(stderr, "%s: Failed to encode file data.\n", __FILE__);
+        cleanup_fp(encInfo);
+        return e_failure;
+    }
+    fprintf(stdout, "%s: File data encoding successful.\n", __FILE__);
+
+    if(copy_remaining_img_data(encInfo->fptr_src_image, encInfo->fptr_stego_image) == e_failure) {
+        fprintf(stderr, "%s: Failed to duplicate remainder file data.\n", __FILE__);
+        cleanup_fp(encInfo);
+        return e_failure;
+    }
+    fprintf(stdout, "%s: Remainder file data duplication successful.\n", __FILE__);
+
+    cleanup_fp(encInfo);
+    return e_success;
+}
+
+Status copy_remaining_img_data(FILE *fptr_src, FILE *fptr_dest) {
+    // TODO: Implement this function
+}
+
+/* TODO: Verify below function */
+Status encode_secret_file_data(EncodeInfo *encInfo) {
+    fseek(encInfo->fptr_secret, 0, SEEK_SET);
+    char data_buffer[MAX_FILE_DATA_BUFFER_SIZE];
+
+    size_t bytes_read;
+    while(1) {
+        bytes_read = fread(data_buffer, 1, MAX_FILE_DATA_BUFFER_SIZE, encInfo->fptr_secret);
+        if(bytes_read == 0) {
+            break;
+        }
+
+        if(encode_data_to_image(data_buffer, bytes_read, encInfo->fptr_src_image, encInfo->fptr_stego_image) == e_failure) {
+            return e_failure;
+        }
+    }
+
+    return e_success;
+}
+
+Status encode_secret_file_size(uint64_t file_size, EncodeInfo *encInfo) {
+    size_t size = e_file_size_field*MAX_IMAGE_BUF_SIZE;
+    uint8_t buffer[size];
+    FILE *fptr_src_image = encInfo->fptr_src_image;
+    FILE *fptr_stego_image = encInfo->fptr_stego_image;
+    uint8_t *file_size_byte = (uint8_t *)&file_size;
+
+    if(fread(buffer, 1, size, fptr_src_image) != size) {
+        return e_failure;
+    }
+    for(int8_t j = 0; j < e_file_size_field; j++) {
+        if(encode_byte_to_lsb(file_size_byte[j], &buffer[(j*MAX_IMAGE_BUF_SIZE)]) == e_failure) {
+            return e_failure;
+        }
+    }
+    if(fwrite(buffer, 1, size, fptr_stego_image) != size) {
+        return e_failure;
+    }
+    
+    return e_success;
+}
+
+Status encode_secret_file_extn(const char *file_extn, EncodeInfo *encInfo) {
+    return encode_data_to_image(file_extn, encInfo->size_secret_file_extn, encInfo->fptr_src_image, encInfo->fptr_stego_image);
+}
+
+Status encode_secret_file_extn_size(const uint extn_size, EncodeInfo *encInfo) {
+    size_t size = e_file_extn_size_field*MAX_IMAGE_BUF_SIZE;
+    uint8_t buffer[size];
+    FILE *fptr_src_image = encInfo->fptr_src_image;
+    FILE *fptr_stego_image = encInfo->fptr_stego_image;
+    uint8_t *extn_size_byte = (uint8_t *)&extn_size;
+
+    if(fread(buffer, 1, size, fptr_src_image) != size) {
+        return e_failure;
+    }
+    for(int8_t j = 0; j < e_file_extn_size_field; j++) {
+        if(encode_byte_to_lsb(extn_size_byte[j], &buffer[(j*MAX_IMAGE_BUF_SIZE)]) == e_failure) {
+            return e_failure;
+        }
+    }
+    if(fwrite(buffer, 1, size, fptr_stego_image) != size) {
+        return e_failure;
+    }
+    
     return e_success;
 }
 
@@ -191,7 +323,7 @@ Status encode_magic_string(const char *magic_string, EncodeInfo *encInfo) {
 }
 
 Status encode_data_to_image(const char *data, size_t size, FILE *fptr_src_image, FILE *fptr_stego_image) {
-    int8_t buffer[MAX_IMAGE_BUF_SIZE];
+    uint8_t buffer[MAX_IMAGE_BUF_SIZE];
 
     for(size_t i = 0; i < size; i++) {
         if(fread(buffer, 1, MAX_IMAGE_BUF_SIZE, fptr_src_image) != MAX_IMAGE_BUF_SIZE) {

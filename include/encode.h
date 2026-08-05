@@ -16,6 +16,7 @@
 #define MAX_SECRET_BUF_SIZE 1
 #define MAX_IMAGE_BUF_SIZE (MAX_SECRET_BUF_SIZE * 8)
 #define MAX_FILE_SUFFIX 4
+#define MAX_FILE_DATA_BUFFER_SIZE 16
 
 typedef struct _EncodeInfo
 {
@@ -71,8 +72,11 @@ Status encode_magic_string(const char *magic_string, EncodeInfo *encInfo);
 /* Encode secret file extenstion */
 Status encode_secret_file_extn(const char *file_extn, EncodeInfo *encInfo);
 
+/* Encode secret file extension size */
+Status encode_secret_file_extn_size(const uint extn_size, EncodeInfo *encInfo);
+
 /* Encode secret file size */
-Status encode_secret_file_size(long file_size, EncodeInfo *encInfo);
+Status encode_secret_file_size(uint64_t file_size, EncodeInfo *encInfo);
 
 /* Encode secret file data*/
 Status encode_secret_file_data(EncodeInfo *encInfo);
