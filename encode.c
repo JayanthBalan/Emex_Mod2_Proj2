@@ -3,6 +3,7 @@
 
 static uint8_t filename_bmp_validate(char *filename);
 static void cleanup_fp(EncodeInfo *encInfo);
+static Status open_files(EncodeInfo *encInfo);
 
 typedef enum _encode_field_sizes {
     e_magic_string_field = 2,
@@ -43,7 +44,7 @@ uint64_t get_image_size_for_bmp(FILE *fptr_image)
  * Output: FILE pointer for above files
  * Return Value: e_success or e_failure, on file errors
  */
-Status open_files(EncodeInfo *encInfo)
+static Status open_files(EncodeInfo *encInfo)
 {
     // Src Image file
     encInfo->fptr_src_image = fopen(encInfo->src_image_fname, "rb");

@@ -23,7 +23,6 @@ typedef struct _DecodeInfo
 } DecodeInfo;
 
 Status read_and_validate_decode_args(char *argv[], DecodeInfo *encInfo);
-Status open_files(DecodeInfo *decInfo, uint8_t filetype);
 Status do_decoding(DecodeInfo *decInfo);
 Status validate_magic_string(const char *magic_string, DecodeInfo *decInfo);
 Status decode_secret_file_extn_size(uint *file_extn_size, DecodeInfo *decInfo);

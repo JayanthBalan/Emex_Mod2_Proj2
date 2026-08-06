@@ -12,6 +12,7 @@ typedef enum _decode_field_sizes {
 
 static uint8_t filename_bmp_validate(char *filename);
 static void cleanup_fp(DecodeInfo *decInfo);
+static Status open_files(DecodeInfo *decInfo, uint8_t filetype);
 
 Status do_decoding(DecodeInfo *decInfo) {
     if(open_files(decInfo, 0) == e_failure) {
@@ -202,7 +203,7 @@ Status decode_lsb_to_byte(uint8_t enc_data[], uint8_t *destByte) {
     return e_success;
 }
 
-Status open_files(DecodeInfo *decInfo, uint8_t filetype)
+static Status open_files(DecodeInfo *decInfo, uint8_t filetype)
 {
     if(filetype == 1) { // Secret file
         decInfo->fptr_secret = fopen(decInfo->secret_fname, "wb");

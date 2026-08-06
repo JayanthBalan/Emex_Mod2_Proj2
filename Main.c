@@ -9,6 +9,11 @@ uint8_t decodeOperation(char *argv[]);
 
 int main(int argc, char *argv[])
 {
+    if(argc <= 1) {
+        fprintf(stdout, "%s: Invalid Command Line Argument", __FILE__);
+        return -1;
+    }
+
     OperationType op_type = check_operation_type(argv);
     if(op_type == e_encode) {
         fprintf(stdout, "%s: Operation type is Encode\n", __FILE__);
