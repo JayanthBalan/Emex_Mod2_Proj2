@@ -247,20 +247,22 @@ Status do_encoding(EncodeInfo *encInfo) {
 }
 
 Status copy_remaining_img_data(FILE *fptr_src, FILE *fptr_dest) {
-    // TODO: Implement this function
+    char buffer[MAX_FILE_DATA_BUFFER_SIZE];
+    size_t bytes_read;
+    while((bytes_read = fread(&buffer, 1, MAX_FILE_DATA_BUFFER_SIZE, fptr_src)) > 0) {
+        if(fwrite(&buffer, 1, bytes_read, fptr_dest) != bytes_read) {
+            return e_failure;
+        }
+    }
+    return e_success;
 }
 
-/* TODO: Verify below function */
 Status encode_secret_file_data(EncodeInfo *encInfo) {
     fseek(encInfo->fptr_secret, 0, SEEK_SET);
     char data_buffer[MAX_FILE_DATA_BUFFER_SIZE];
 
     size_t bytes_read;
-    while(1) {
-        bytes_read = fread(data_buffer, 1, MAX_FILE_DATA_BUFFER_SIZE, encInfo->fptr_secret);
-        if(bytes_read == 0) {
-            break;
-        }
+    while((bytes_read = fread(data_buffer, 1, MAX_FILE_DATA_BUFFER_SIZE, encInfo->fptr_secret)) > 0) {
 
         if(encode_data_to_image(data_buffer, bytes_read, encInfo->fptr_src_image, encInfo->fptr_stego_image) == e_failure) {
             return e_failure;
