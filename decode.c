@@ -16,6 +16,7 @@ static void cleanup_fp(DecodeInfo *decInfo);
 Status do_decoding(DecodeInfo *decInfo) {
     if(open_files(decInfo, 0) == e_failure) {
         fprintf(stderr, "%s: File open failed\n", __FILE__);
+        cleanup_fp(decInfo);
         return e_failure;
     }
     fprintf(stdout, "%s: File opens success\n", __FILE__);
@@ -34,23 +35,36 @@ Status do_decoding(DecodeInfo *decInfo) {
     }
     fprintf(stdout, "%s: File extension size retrieved successful.\n", __FILE__);
 
-    char extn[(decInfo->size_secret_file_extn)];
-    if(decode_secret_file_extn(extn, decInfo) == e_failure) {
-        fprintf(stderr, "%s: Failed to retrieve file extension.\n", __FILE__);
-        cleanup_fp(decInfo);
-        return e_failure;
-    }
-    fprintf(stdout, "%s: File extension retrieved successful.\n", __FILE__);
+    if(decInfo->size_secret_file_extn > 0) {
+        char extn[(decInfo->size_secret_file_extn) + 1];
+        if(decode_secret_file_extn(extn, decInfo) == e_failure) {
+            fprintf(stderr, "%s: Failed to retrieve file extension.\n", __FILE__);
+            cleanup_fp(decInfo);
+            return e_failure;
+        }
+        fprintf(stdout, "%s: File extension retrieved successful.\n", __FILE__);
 
-    if(file_extn_correction(extn, decInfo) == e_failure) {
-        fprintf(stderr, "%s: Failed to fix file extension.\n", __FILE__);
-        cleanup_fp(decInfo);
-        return e_failure;
+        extn[decInfo->size_secret_file_extn] = '\0';
+
+        if(file_extn_correction(extn, decInfo) == e_failure) {
+            fprintf(stderr, "%s: Failed to fix file extension.\n", __FILE__);
+            cleanup_fp(decInfo);
+            return e_failure;
+        }
+        fprintf(stdout, "%s: File extension is correct.\n", __FILE__);
     }
-    fprintf(stdout, "%s: File extension is correct.\n", __FILE__);
+    else {
+        if(file_extn_correction(NULL, decInfo) == e_failure) {
+            fprintf(stderr, "%s: Failed to fix file extension.\n", __FILE__);
+            cleanup_fp(decInfo);
+            return e_failure;
+        }
+        fprintf(stdout, "%s: File extension is correct.\n", __FILE__);
+    }
 
     if(open_files(decInfo, 1) == e_failure) {
         fprintf(stderr, "%s: File open failed\n", __FILE__);
+        cleanup_fp(decInfo);
         return e_failure;
     }
     fprintf(stdout, "%s: File opens success\n", __FILE__);
@@ -69,6 +83,7 @@ Status do_decoding(DecodeInfo *decInfo) {
     }
     fprintf(stdout, "%s: File retrieved successful.\n", __FILE__);
 
+    cleanup_fp(decInfo);
     return e_success;
 }
 
@@ -76,8 +91,9 @@ Status decode_secret_file(DecodeInfo *decInfo) {
     fseek(decInfo->fptr_secret, 0, SEEK_SET);
     char buffer[FILE_READ_BLOCK_SIZE];
 
-    size_t i;
-    for(i = 0; i < decInfo->size_secret_file; i += FILE_READ_BLOCK_SIZE) {
+    size_t full_blocks = decInfo->size_secret_file / FILE_READ_BLOCK_SIZE;
+    size_t rem = decInfo->size_secret_file % FILE_READ_BLOCK_SIZE;
+    for(size_t i = 0; i < full_blocks; i++) {
         if(decode_image_to_data(FILE_READ_BLOCK_SIZE, decInfo->fptr_stego_image, buffer) == e_failure) {
             return e_failure;
         }
@@ -85,19 +101,20 @@ Status decode_secret_file(DecodeInfo *decInfo) {
             return e_failure;
         }
     }
-    i -= (decInfo->size_secret_file);
-    if(decode_image_to_data(i, decInfo->fptr_stego_image, buffer) == e_failure) {
-        return e_failure;
-    }
-    if(fwrite(buffer, 1, i, decInfo->fptr_secret) != i) {
-        return e_failure;
+    if(rem > 0) {
+        if(decode_image_to_data(rem, decInfo->fptr_stego_image, buffer) == e_failure) {
+            return e_failure;
+        }
+        if(fwrite(buffer, 1, rem, decInfo->fptr_secret) != rem) {
+            return e_failure;
+        }
     }
 
     return e_success;
 }
 
 Status decode_secret_file_size(uint64_t *size_data, DecodeInfo *decInfo) {
-    uint8_t *buffer = (char*)size_data;
+    uint8_t *buffer = (uint8_t*)size_data;
 
     for(uint8_t i = 0; i < e_file_size_field; i++) {
         if(decode_image_to_data(1, decInfo->fptr_stego_image, &buffer[i]) == e_failure) {
@@ -109,6 +126,17 @@ Status decode_secret_file_size(uint64_t *size_data, DecodeInfo *decInfo) {
 }
 
 Status file_extn_correction(char *crct_extn, DecodeInfo *decInfo) {
+    if(crct_extn == NULL) {
+        char *secret_fname = decInfo->secret_fname;
+        for(; *secret_fname != '\0'; secret_fname++);
+        for(; *secret_fname != '.' && secret_fname != decInfo->secret_fname; secret_fname--);
+        if(secret_fname == decInfo->secret_fname) {
+            return e_success;
+        }
+        *secret_fname = '\0';
+        return e_success;
+    }
+
     char *secret_fname = decInfo->secret_fname;
     for(; *secret_fname != '\0'; secret_fname++);
     char *end_fname = secret_fname;
@@ -118,10 +146,10 @@ Status file_extn_correction(char *crct_extn, DecodeInfo *decInfo) {
     }
 
     size_t i;
-    for(i = 0; crct_extn[i] != '\0'; i++) {
+    for(i = 0; i < decInfo->size_secret_file_extn; i++) {
         secret_fname[i] = crct_extn[i];
     }
-    secret_fname[i] = crct_extn[i];
+    secret_fname[i] = '\0';
 
     return e_success;
 }

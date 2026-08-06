@@ -57,7 +57,7 @@ Status open_files(EncodeInfo *encInfo)
     }
 
     // Secret file
-    encInfo->fptr_secret = fopen(encInfo->secret_fname, "r");
+    encInfo->fptr_secret = fopen(encInfo->secret_fname, "rb");
     // Do Error handling
     if (encInfo->fptr_secret == NULL)
     {
@@ -182,6 +182,7 @@ static void cleanup_fp(EncodeInfo *encInfo) {
 Status do_encoding(EncodeInfo *encInfo) {
     if(open_files(encInfo) == e_failure) {
         fprintf(stderr, "%s: File open failed\n", __FILE__);
+        cleanup_fp(encInfo);
         return e_failure;
     }
     fprintf(stdout, "%s: File opens success\n", __FILE__);
@@ -382,11 +383,11 @@ Status check_capacity(EncodeInfo *encInfo) {
 uint64_t get_file_size(FILE *fptr) {
     fseek(fptr, 0, SEEK_END);
 
-    uint64_t size = (uint64_t)ftell(fptr);
+    int64_t size = (int64_t)ftell(fptr);
     if(size == -1) {
         fprintf(stderr, "%s: Unable to determine size.\n", __FILE__);
         return 0;
     }
 
-    return size;
+    return (uint64_t)size;
 }

@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 }
 
 uint8_t decodeOperation(char *argv[]) {
-    DecodeInfo decInfo;
+    DecodeInfo decInfo = {0};
 
     Status stat = read_and_validate_decode_args(argv, &decInfo);
     if(stat == e_failure) {
@@ -48,7 +48,7 @@ uint8_t decodeOperation(char *argv[]) {
 }
 
 uint8_t encodeOperation(char *argv[]) {
-    EncodeInfo encInfo;
+    EncodeInfo encInfo = {0};
     Status stat = read_and_validate_encode_args(argv, &encInfo);
     if(stat == e_failure) {
         fprintf(stderr, "%s: Encode arguments invalid\n", __FILE__);
