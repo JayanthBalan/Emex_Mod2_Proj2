@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+#define MAGIC_STRING "#*"
+#define BMP_HEADER_SIZE 54
+
 /* User defined types */
 typedef uint32_t uint;
 
