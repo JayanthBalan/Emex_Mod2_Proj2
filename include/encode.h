@@ -2,6 +2,10 @@
 #define ENCODE_H
 
 #include "types.h" // Contains user defined types
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stddef.h>
 
 /** 
  * Structure to store information required for

@@ -1,8 +1,5 @@
 
 #include "decode.h"
-#include <stdio.h>
-#include <stdint.h>
-#include <string.h>
 
 typedef enum _decode_field_sizes {
     e_magic_string_field = 2,
@@ -38,7 +35,7 @@ Status do_decoding(DecodeInfo *decInfo) {
 
     if(decInfo->size_secret_file_extn > 0) {
         char extn[(decInfo->size_secret_file_extn) + 1];
-        if(decode_secret_file_extn(extn, decInfo) == e_failure) {
+        if(decode_secret_file_extn((uint8_t *)extn, decInfo) == e_failure) {
             fprintf(stderr, "%s: Failed to retrieve file extension.\n", __FILE__);
             cleanup_fp(decInfo);
             return e_failure;
@@ -90,7 +87,7 @@ Status do_decoding(DecodeInfo *decInfo) {
 
 Status decode_secret_file(DecodeInfo *decInfo) {
     fseek(decInfo->fptr_secret, 0, SEEK_SET);
-    char buffer[FILE_READ_BLOCK_SIZE];
+    uint8_t buffer[FILE_READ_BLOCK_SIZE];
 
     size_t full_blocks = decInfo->size_secret_file / FILE_READ_BLOCK_SIZE;
     size_t rem = decInfo->size_secret_file % FILE_READ_BLOCK_SIZE;
@@ -155,17 +152,28 @@ Status file_extn_correction(char *crct_extn, DecodeInfo *decInfo) {
     return e_success;
 }
 
-Status decode_secret_file_extn(char *extn, DecodeInfo *decInfo) {
+Status decode_secret_file_extn(uint8_t *extn, DecodeInfo *decInfo) {
     return decode_image_to_data(decInfo->size_secret_file_extn, decInfo->fptr_stego_image, extn);
 }
 
-Status decode_secret_file_extn_size(uint *file_extn_size, DecodeInfo *decInfo) {
-    return decode_image_to_data(e_file_extn_size_field, decInfo->fptr_stego_image, file_extn_size);
+Status decode_secret_file_extn_size(uint *file_extn_size, DecodeInfo *decInfo)
+{
+    uint8_t *buffer = (uint8_t *)file_extn_size;
+
+    for (uint8_t i = 0; i < e_file_extn_size_field; i++)
+    {
+        if (decode_image_to_data(1, decInfo->fptr_stego_image, &buffer[i]) == e_failure)
+        {
+            return e_failure;
+        }
+    }
+
+    return e_success;
 }
 
 Status validate_magic_string(const char *magic_string, DecodeInfo *decInfo) {
     fseek(decInfo->fptr_stego_image, BMP_HEADER_SIZE, SEEK_SET);
-    char buffer[e_magic_string_field];
+    uint8_t buffer[e_magic_string_field];
     if(decode_image_to_data(e_magic_string_field, decInfo->fptr_stego_image, buffer) == e_failure) {
         return e_failure;
     }
@@ -179,7 +187,7 @@ Status validate_magic_string(const char *magic_string, DecodeInfo *decInfo) {
     return e_success;
 }
 
-Status decode_image_to_data(size_t target_readBytes, FILE *fptr_stego_image, char *decryptedData) {
+Status decode_image_to_data(size_t target_readBytes, FILE *fptr_stego_image, uint8_t *decryptedData) {
     uint8_t buffer[IMAGE_BYTE_PER_DATA_BYTE];
 
     for(size_t i = 0; i < target_readBytes; i++) {

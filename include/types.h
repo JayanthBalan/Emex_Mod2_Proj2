@@ -7,7 +7,7 @@
 #define BMP_HEADER_SIZE 54
 
 /* User defined types */
-typedef uint32_t uint;
+typedef unsigned long uint;
 
 /* Status will be used in fn. return type */
 typedef enum
