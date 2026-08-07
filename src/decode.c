@@ -264,7 +264,7 @@ Status read_and_validate_decode_args(char *argv[], DecodeInfo *decInfo) {
 
     // Output File
     if(argv[3] == NULL) {
-        strcpy(decInfo->secret_fname, "decoded_msg.txt");
+        strcpy(decInfo->secret_fname, "target_files/default_decodedMessage.txt");
         return e_success;
     }
     strcpy(decInfo->secret_fname, argv[3]);

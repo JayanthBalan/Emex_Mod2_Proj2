@@ -159,7 +159,7 @@ Status read_and_validate_encode_args(char *argv[], EncodeInfo *encInfo) {
 
     // Destination Image
     if(argv[4] == NULL) {
-        encInfo->stego_image_fname = "veiled_words.bmp";
+        encInfo->stego_image_fname = "target_files/default_veiledWords.bmp";
         return e_success;
     }
     if(filename_bmp_validate(argv[4])) {
