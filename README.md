@@ -15,12 +15,12 @@ make
 
 **Hide file:**
 ```bash
-./stego -e source_cloak.bmp source_silentWords.txt user_stegoImage.bmp
+./stego -e target_files/source_cloak.bmp target_files/source_silentWords.txt target_files/user_stegoImage.bmp
 ```
 
 **Retrieve file:**
 ```bash
-./stego -d user_stegoImage.bmp user_uncloaked.txt
+./stego -d target_files/user_stegoImage.bmp target_files/user_uncloaked.txt
 
 ```
 
